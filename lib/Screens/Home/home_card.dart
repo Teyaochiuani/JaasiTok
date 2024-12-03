@@ -125,84 +125,86 @@ class _HomeCardState extends State<HomeCard> {
     }
   }
 
-  Widget _buildCommentsOverlay() {
-    return Positioned.fill(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            showComments = false;
-          });
-        },
-        child: Container(
-          color: Colors.black.withOpacity(0.5),
-          child: Center(
-            child: Container(
-              padding: EdgeInsets.all(10),
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.7,
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                color: Colors.white,
-              ),
-              child: Column(
-                children: [
-                  // Lista de comentarios en tiempo real
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('posts')
-                          .doc(widget.postId)
-                          .collection('comments')
-                          .orderBy('timestamp', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return Center(child: Text("No hay comentarios aún."));
-                        }
+Widget _buildCommentsOverlay() {
+  return Positioned.fill(
+    child: GestureDetector(
+      onTap: () {
+        setState(() {
+          showComments = false;
+        });
+      },
+      child: Container(
+        color: Colors.black.withOpacity(0.0),
+        child: Center(
+          child: Container(
+            padding: EdgeInsets.all(10),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: Colors.white,
+            ),
+            child: Column(
+              children: [
+                // Lista de comentarios en tiempo real
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('posts')
+                        .doc(widget.postId)
+                        .collection('comments')
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(child: Text("No hay comentarios aún."));
+                      }
 
-                        final comments = snapshot.data!.docs;
+                      final comments = snapshot.data!.docs;
 
-                        return ListView.builder(
-                          itemCount: comments.length,
-                          itemBuilder: (context, index) {
-                            final comment = comments[index].data() as Map<String, dynamic>;
-                            final timestamp = comment['timestamp'] != null
-                                ? (comment['timestamp'] as Timestamp).toDate()
-                                : null;
-                            final formattedTime = timestamp != null
-                                ? "${timestamp.hour}:${timestamp.minute} ${timestamp.day}/${timestamp.month}/${timestamp.year}"
-                                : "Desconocido";
+                      return ListView.builder(
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = comments[index].data() as Map<String, dynamic>;
+                          final timestamp = comment['timestamp'] != null
+                              ? (comment['timestamp'] as Timestamp).toDate()
+                              : null;
+                          final formattedTime = timestamp != null
+                              ? "${timestamp.hour}:${timestamp.minute} ${timestamp.day}/${timestamp.month}/${timestamp.year}"
+                              : "Desconocido";
 
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: NetworkImage(comment['profileimageURL'] ?? ''),
-                              ),
-                              title: Text(
-                                comment['nickname'] ?? 'Usuario desconocido',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(comment['text'] ?? ''),
-                                  Text(
-                                    formattedTime,
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundImage: NetworkImage(comment['profileimageURL'] ?? ''),
+                            ),
+                            title: Text(
+                              comment['nickname'] ?? 'Usuario desconocido',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(comment['text'] ?? ''),
+                                Text(
+                                  formattedTime,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
-                  // Campo de texto para agregar comentarios
-                  TextField(
+                ),
+                // Campo de texto para agregar comentarios
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: TextField(
                     controller: _commentController,
                     onSubmitted: _addComment,
                     decoration: InputDecoration(
@@ -210,14 +212,15 @@ class _HomeCardState extends State<HomeCard> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

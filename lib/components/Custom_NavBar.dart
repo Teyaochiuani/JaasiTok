@@ -71,14 +71,14 @@ class CustomNavBar extends StatelessWidget {
                               width: 60,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(18, 18, 18, 0),
-                                child: MenuState.home == selectedMenu
-                                    ? SvgPicture.asset(
-                                        "assets/icons/home.svg",
-                                        color: Color(0xff651CE5),
-                                      )
-                                    : SvgPicture.asset(
-                                        "assets/icons/home-outline.svg",
-                                      ),
+                                child: SvgPicture.network(
+                                  MenuState.home == selectedMenu
+                                      ? "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/home_owwjjr.svg"
+                                      : "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/home-outline_mvatpb.svg",
+                                  color: MenuState.home == selectedMenu
+                                      ? Color(0xff651CE5)
+                                      : null,
+                                ),
                               ),
                             ),
                             Padding(
@@ -125,14 +125,14 @@ class CustomNavBar extends StatelessWidget {
                               width: 60,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(18, 18, 18, 0),
-                                child: MenuState.discover == selectedMenu
-                                    ? SvgPicture.asset(
-                                        "assets/icons/discover.svg",
-                                        color: Color(0xff651CE5),
-                                      )
-                                    : SvgPicture.asset(
-                                        "assets/icons/discover-outline.svg",
-                                      ),
+                                child: SvgPicture.network(
+                                  MenuState.discover == selectedMenu
+                                      ? "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/discover_hldnhv.svg"
+                                      : "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/discover-outline_z8fi6a.svg",
+                                  color: MenuState.discover == selectedMenu
+                                      ? Color(0xff651CE5)
+                                      : null,
+                                ),
                               ),
                             ),
                             Padding(
@@ -179,24 +179,26 @@ class CustomNavBar extends StatelessWidget {
                               width: 60,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-                                child: MenuState.inbox == selectedMenu
-                                    ? SvgPicture.asset(
-                                        "assets/icons/mail.svg",
-                                        color: Color(0xff651CE5),
-                                      )
-                                    : SvgPicture.asset(
-                                        "assets/icons/mail-outline.svg",
-                                      ),
+                                child: SvgPicture.network(
+                                  MenuState.inbox == selectedMenu
+                                      ? "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/mail_bta6wd.svg"
+                                      : "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266859/mail-outline_sdw8or.svg",
+                                  color: MenuState.inbox == selectedMenu
+                                      ? Color(0xff651CE5)
+                                      : null,
+                                ),
                               ),
                             ),
                             Padding(
                               padding: const EdgeInsets.only(bottom: 5),
                               child: Container(
-                                child: Text("Inbox",
-                                    style: TextStyle(
-                                        color: MenuState.inbox == selectedMenu
-                                            ? Color(0xff651CE5)
-                                            : Colors.black)),
+                                child: Text(
+                                  "Inbox",
+                                  style: TextStyle(
+                                      color: MenuState.inbox == selectedMenu
+                                          ? Color(0xff651CE5)
+                                          : Colors.black),
+                                ),
                               ),
                             ),
                           ],
@@ -232,14 +234,14 @@ class CustomNavBar extends StatelessWidget {
                               width: 60,
                               child: Padding(
                                 padding: EdgeInsets.fromLTRB(18, 18, 18, 0),
-                                child: MenuState.profile == selectedMenu
-                                    ? SvgPicture.asset(
-                                        "assets/icons/profile.svg",
-                                        color: Color(0xff651CE5),
-                                      )
-                                    : SvgPicture.asset(
-                                        "assets/icons/profile-outline.svg",
-                                      ),
+                                child: SvgPicture.network(
+                                  MenuState.profile == selectedMenu
+                                      ? "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266857/profile_hznb6e.svg"
+                                      : "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266859/profile-outline_xlu8zb.svg",
+                                  color: MenuState.profile == selectedMenu
+                                      ? Color(0xff651CE5)
+                                      : null,
+                                ),
                               ),
                             ),
                             Padding(

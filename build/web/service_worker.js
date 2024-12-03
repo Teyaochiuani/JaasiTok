@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flutter-pwa-cache-v2';
+const CACHE_NAME = 'JasimpTok';
 const FIRESTORE_DYNAMIC_CACHE = 'firestore-dynamic-cache';
 
 self.addEventListener('install', (event) => {
@@ -49,7 +49,10 @@ self.addEventListener('fetch', (event) => {
       caches.open(FIRESTORE_DYNAMIC_CACHE).then((cache) => {
         return fetch(event.request)
           .then((response) => {
-            cache.put(event.request, response.clone());
+            // Solo cachear si la respuesta es válida
+            if (response && response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
             return response;
           })
           .catch(() => {
@@ -61,7 +64,12 @@ self.addEventListener('fetch', (event) => {
     // Manejar otros recursos estáticos
     event.respondWith(
       caches.match(event.request).then((response) => {
-        return response || fetch(event.request);
+        return (
+          response ||
+          fetch(event.request).catch(() => {
+            console.error('Failed to fetch:', event.request.url);
+          })
+        );
       })
     );
   }

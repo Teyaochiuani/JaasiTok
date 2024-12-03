@@ -126,8 +126,8 @@ class _HomeState extends State<HomeScreen> {
                                   left: 20, right: 20, top: 10),
                               child: Row(
                                 children: [
-                                  SvgPicture.asset(
-                                    "assets/icons/menu.svg",
+                                  SvgPicture.network(
+                                    "https://res.cloudinary.com/dnwmz8ss2/image/upload/v1733266859/menu_cjieoe.svg",
                                     color: Color(0xff651CE5),
                                     height: 50,
                                   ),
