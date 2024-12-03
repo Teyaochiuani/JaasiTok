@@ -12,7 +12,16 @@ self.addEventListener('install', (event) => {
         './assets/AssetManifest.json',
         './assets/FontManifest.json',
         './icons/icon-192.png',
-        './icons/icon-512.png', // Agrega otros recursos estáticos aquí
+        './icons/icon-512.png',
+        './assets/icons/home.svg',
+        './assets/icons/home-outline.svg',
+        './assets/icons/discover.svg',
+        './assets/icons/discover-outline.svg',
+        './assets/icons/mail.svg',
+        './assets/icons/mail-outline.svg',
+        './assets/icons/profile.svg',
+        './assets/icons/profile-outline.svg',
+        './assets/icons/menu.svg',
       ]);
     })
   );
