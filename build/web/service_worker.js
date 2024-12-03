@@ -1,40 +1,59 @@
-const CACHE_NAME = 'flutter-pwa-cache-v1';
-const urlsToCache = [
-  './',
-  './index.html',
-  './main.dart.js',
-  './assets/AssetManifest.json',
-  './assets/FontManifest.json',
-  './icons/icon-192.png', // Ajusta según tus iconos
-  './assets/assets/images/px6.jpg', 
-];
+const CACHE_NAME = 'flutter-pwa-cache-v2';
+const FIRESTORE_DYNAMIC_CACHE = 'firestore-dynamic-cache';
 
-
-// Al instalar el service worker, cacheamos las URLs necesarias
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Archivos cacheados');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Caching static assets');
+      return cache.addAll([
+        './',
+        './index.html',
+        './main.dart.js',
+        './assets/AssetManifest.json',
+        './assets/FontManifest.json',
+        './icons/icon-192.png',
+        './icons/icon-512.png', // Agrega otros recursos estáticos aquí
+      ]);
+    })
   );
 });
 
-// Durante el fetch, servimos el contenido desde el cache si estamos offline
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Si se encuentra una respuesta en el cache, la devolvemos
-        if (response) {
-          return response;
-        }
-        
-        // Si no hay conexión, se carga la página offline.html
-        return fetch(event.request).catch(() => {
-          return caches.match('/offline.html');
-        });
-      })
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME && cache !== FIRESTORE_DYNAMIC_CACHE) {
+            console.log('Deleting old cache:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
   );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.url.includes('firestore.googleapis.com')) {
+    // Manejar solicitudes a Firestore
+    event.respondWith(
+      caches.open(FIRESTORE_DYNAMIC_CACHE).then((cache) => {
+        return fetch(event.request)
+          .then((response) => {
+            cache.put(event.request, response.clone());
+            return response;
+          })
+          .catch(() => {
+            return cache.match(event.request);
+          });
+      })
+    );
+  } else {
+    // Manejar otros recursos estáticos
+    event.respondWith(
+      caches.match(event.request).then((response) => {
+        return response || fetch(event.request);
+      })
+    );
+  }
 });

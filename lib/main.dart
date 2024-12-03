@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:floein_social_app/NavigationRoutes.dart';
 import 'firebase_options.dart'; 
 import 'package:floein_social_app/Screens/LoginRegister/LoginRegisterScreen.dart';
@@ -8,7 +9,13 @@ import 'package:floein_social_app/Screens/LoginRegister/LoginRegisterScreen.dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Usa las opciones generadas automáticamente
+    options: DefaultFirebaseOptions.currentPlatform, 
+    // Usa las opciones generadas automáticamente
+  );
+
+  // Habilitar persistencia offline para Firestore
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
   );
   runApp(MyApp());
 }

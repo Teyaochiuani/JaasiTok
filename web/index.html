@@ -8,13 +8,23 @@
 <body>
   <script src="main.dart.js" type="application/javascript"></script>
 </body>
+<style>
+  html, body {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+</style>
 </html>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service_worker.js').then((registration) => {
-      console.log('Service Worker registrado con éxito:', registration.scope);
-    }).catch((error) => {
-      console.log('Error al registrar el Service Worker:', error);
-    });
+    navigator.serviceWorker
+      .register('./service_worker.js')
+      .then((registration) => {
+        console.log('Service Worker registrado con éxito:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('Error al registrar el Service Worker:', error);
+      });
   }
 </script>
+
