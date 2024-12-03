@@ -36,11 +36,7 @@ class _HomeCardState extends State<HomeCard> {
   late bool isLiked;
   late int likesCount;
   bool showComments = false;
-  List<DocumentSnapshot> comments = [];
-  bool isLoadingComments = false;
-  DocumentSnapshot? lastComment;
-  final int commentsPerPage = 5;
-  bool hasMoreComments = true;
+  final TextEditingController _commentController = TextEditingController();
 
   @override
   void initState() {
@@ -61,6 +57,7 @@ class _HomeCardState extends State<HomeCard> {
   @override
   void dispose() {
     _videoController?.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -88,54 +85,43 @@ class _HomeCardState extends State<HomeCard> {
         likesCount += isLiked ? 1 : -1;
       });
     } catch (e) {
-      // Revertir cambios locales si falla
-      setState(() {
-        isLiked = !isLiked;
-        likesCount -= isLiked ? 1 : -1;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error al actualizar el like.'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al actualizar el like.')),
+      );
     }
   }
 
-  Future<void> _fetchComments() async {
-    if (isLoadingComments || !hasMoreComments) return;
+  Future<void> _addComment(String commentText) async {
+    if (commentText.isEmpty) return;
 
-    setState(() {
-      isLoadingComments = true;
-    });
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
-    Query query = FirebaseFirestore.instance
-        .collection('posts')
-        .doc(widget.postId)
-        .collection('comments')
-        .orderBy('timestamp', descending: true)
-        .limit(commentsPerPage);
-
-    if (lastComment != null) {
-      query = query.startAfterDocument(lastComment!);
-    }
+    if (currentUserId == null) return;
 
     try {
-      QuerySnapshot snapshot = await query.get();
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
 
-      setState(() {
-        comments.addAll(snapshot.docs);
-        if (snapshot.docs.isNotEmpty) {
-          lastComment = snapshot.docs.last;
-        } else {
-          hasMoreComments = false;
-        }
+      if (!userDoc.exists) return;
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .add({
+        'text': commentText,
+        'userID': currentUserId,
+        'nickname': userData['nickname'],
+        'profileimageURL': userData['profileimageURL'],
+        'timestamp': FieldValue.serverTimestamp(),
       });
+
+      _commentController.clear();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error al cargar comentarios.'),
-      ));
-    } finally {
-      setState(() {
-        isLoadingComments = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al enviar el comentario: $e')),
+      );
     }
   }
 
@@ -161,79 +147,64 @@ class _HomeCardState extends State<HomeCard> {
               ),
               child: Column(
                 children: [
+                  // Lista de comentarios en tiempo real
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: comments.length + (hasMoreComments ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index == comments.length) {
-                          _fetchComments();
-                          return Center(
-                            child: CircularProgressIndicator(),
-                          );
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('posts')
+                          .doc(widget.postId)
+                          .collection('comments')
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(child: Text("No hay comentarios aún."));
                         }
 
-                        final comment = comments[index].data() as Map<String, dynamic>;
-                        final timestamp = comment['timestamp'] != null
-                            ? (comment['timestamp'] as Timestamp).toDate()
-                            : null;
-                        final formattedTime = timestamp != null
-                            ? "${timestamp.hour}:${timestamp.minute} ${timestamp.day}/${timestamp.month}/${timestamp.year}"
-                            : "Desconocido";
+                        final comments = snapshot.data!.docs;
 
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(comment['profileimageURL'] ?? ''),
-                          ),
-                          title: Text(
-                            comment['nickname'] ?? 'Usuario desconocido',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(comment['text'] ?? ''),
-                              Text(
-                                formattedTime,
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                        return ListView.builder(
+                          itemCount: comments.length,
+                          itemBuilder: (context, index) {
+                            final comment = comments[index].data() as Map<String, dynamic>;
+                            final timestamp = comment['timestamp'] != null
+                                ? (comment['timestamp'] as Timestamp).toDate()
+                                : null;
+                            final formattedTime = timestamp != null
+                                ? "${timestamp.hour}:${timestamp.minute} ${timestamp.day}/${timestamp.month}/${timestamp.year}"
+                                : "Desconocido";
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: NetworkImage(comment['profileimageURL'] ?? ''),
                               ),
-                            ],
-                          ),
+                              title: Text(
+                                comment['nickname'] ?? 'Usuario desconocido',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(comment['text'] ?? ''),
+                                  Text(
+                                    formattedTime,
+                                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
                   ),
+                  // Campo de texto para agregar comentarios
                   TextField(
-                    onSubmitted: (value) async {
-                      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
-                      if (currentUserId == null) return;
-
-                      final userDoc = await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(currentUserId)
-                          .get();
-                      if (!userDoc.exists) return;
-
-                      final userData = userDoc.data() as Map<String, dynamic>;
-
-                      try {
-                        await FirebaseFirestore.instance
-                            .collection('posts')
-                            .doc(widget.postId)
-                            .collection('comments')
-                            .add({
-                          'text': value,
-                          'userID': currentUserId,
-                          'nickname': userData['nickname'],
-                          'profileimageURL': userData['profileimageURL'],
-                          'timestamp': FieldValue.serverTimestamp(),
-                        });
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Error al enviar el comentario.'),
-                        ));
-                      }
-                    },
+                    controller: _commentController,
+                    onSubmitted: _addComment,
                     decoration: InputDecoration(
                       hintText: "Escribe un comentario...",
                       border: OutlineInputBorder(),
@@ -331,7 +302,7 @@ class _HomeCardState extends State<HomeCard> {
                     icon: Icon(Icons.comment),
                     onPressed: () {
                       setState(() {
-                        showComments = !showComments;
+                        showComments = true;
                       });
                     },
                   ),

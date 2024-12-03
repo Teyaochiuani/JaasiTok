@@ -89,7 +89,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         'nickname': userDoc['nickname'],
         'profileimageURL': userDoc['profileimageURL'],
         'likes': {}, // Mapa vacío para inicializar likes
-        'likesCount': 0, // Contador inicializado en 0
+        'likesCount': 1, // Contador inicializado en 0
         'comments': [], // Lista vacía para comentarios
         'timestamp': FieldValue.serverTimestamp(),
       });
