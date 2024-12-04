@@ -69,7 +69,8 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
         Navigator.pushReplacementNamed(context, "/home");
       } else {
         // Register
-        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final userCredential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
@@ -95,85 +96,138 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              Text(
-                isLogin ? "Iniciar Sesión" : "Registrarse",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+      backgroundColor: Colors.blueGrey[50],
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Form(
+            key: _formKey,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-              SizedBox(height: 20),
-              if (!isLogin)
-                GestureDetector(
-                  onTap: _selectProfileImage,
-                  child: Center(
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundImage: _profileImageURL != null
-                          ? NetworkImage(_profileImageURL!)
-                          : AssetImage("assets/images/default-avatar.png") as ImageProvider,
-                      child: _profileImageURL == null
-                          ? Icon(Icons.camera_alt, size: 50)
-                          : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isLogin ? "Iniciar Sesión" : "Registrarse",
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue,
+                      letterSpacing: -1,
                     ),
                   ),
-                ),
-              if (!isLogin) SizedBox(height: 20),
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: "Correo electrónico"),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Por favor ingresa un correo";
-                  }
-                  return null;
-                },
+                  const SizedBox(height: 20),
+                  if (!isLogin)
+                    GestureDetector(
+                      onTap: _selectProfileImage,
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.blue.withOpacity(0.2),
+                        backgroundImage: _profileImageURL != null
+                            ? NetworkImage(_profileImageURL!)
+                            : null,
+                        child: _profileImageURL == null
+                            ? const Icon(
+                                Icons.camera_alt,
+                                size: 40,
+                                color: Colors.blue,
+                              )
+                            : null,
+                      ),
+                    ),
+                  if (!isLogin) const SizedBox(height: 20),
+                  _buildInputField(
+                    controller: _emailController,
+                    labelText: "Correo Electrónico",
+                  ),
+                  const SizedBox(height: 15),
+                  _buildInputField(
+                    controller: _passwordController,
+                    labelText: "Contraseña",
+                    obscureText: true,
+                  
+                  ),
+                  if (!isLogin) const SizedBox(height: 15),
+                  if (!isLogin)
+                    _buildInputField(
+                      controller: _nicknameController,
+                      labelText: "Nombre de Usuario",
+                    ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _handleSubmit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      isLogin ? "Iniciar Sesión" : "Registrarse",
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        isLogin = !isLogin;
+                      });
+                    },
+                    child: Text(
+                      isLogin
+                          ? "¿No tienes cuenta? Regístrate"
+                          : "¿Ya tienes cuenta? Inicia Sesión",
+                      style: const TextStyle(color: Colors.blue),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: "Contraseña"),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Por favor ingresa una contraseña";
-                  }
-                  return null;
-                },
-              ),
-              if (!isLogin) SizedBox(height: 10),
-              if (!isLogin)
-                TextFormField(
-                  controller: _nicknameController,
-                  decoration: InputDecoration(labelText: "Nombre de usuario"),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Por favor ingresa un nombre de usuario";
-                    }
-                    return null;
-                  },
-                ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _handleSubmit,
-                child: Text(isLogin ? "Iniciar Sesión" : "Registrarse"),
-              ),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    isLogin = !isLogin;
-                  });
-                },
-                child: Text(isLogin ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia Sesión"),
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String labelText,
+    bool obscureText = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(color: Colors.grey),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.blue),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+      ),
+      obscureText: obscureText,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return "Este campo es obligatorio";
+        }
+        return null;
+      },
     );
   }
 }
