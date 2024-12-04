@@ -126,48 +126,54 @@ class _HomeState extends State<HomeScreen> {
     for (String cachedPost in cachedPosts) {
       final post = jsonDecode(cachedPost) as Map<String, dynamic>;
 
+      // Verificar si la publicación ya existe en Firebase (opcional, para mayor seguridad)
+      QuerySnapshot existingPosts = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('timestamp', isEqualTo: post['timestamp'])
+          .where('userID', isEqualTo: post['userID'])
+          .get();
+
+      if (existingPosts.docs.isNotEmpty) {
+        // Si ya existe en Firebase, no intentar subirla de nuevo
+        continue;
+      }
+
       try {
-        // Verificar si la publicación ya existe en Firebase
-        QuerySnapshot existingPosts = await FirebaseFirestore.instance
-            .collection('posts')
-            .where('timestamp', isEqualTo: post['timestamp'])
-            .where('userID', isEqualTo: post['userID'])
-            .get();
-
-        if (existingPosts.docs.isEmpty) {
-          // Subir archivo a Cloudinary si es necesario
-          if (post.containsKey('fileBytes') && post.containsKey('fileName')) {
-            final mediaUrl = await CloudinaryService().uploadMedia(
-              base64Decode(post['fileBytes']),
-              post['fileName'],
-              isVideo: post['isVideo'],
-            );
-            post['mediaUrl'] = mediaUrl;
-          }
-
-          // Subir datos a Firebase
-          await FirebaseFirestore.instance.collection('posts').add({
-            ...post,
-            'timestamp': FieldValue.serverTimestamp(), // Usar timestamp de Firebase
-          });
+        // Subir archivo a Cloudinary si es necesario
+        if (post.containsKey('fileBytes') && post.containsKey('fileName')) {
+          final mediaUrl = await CloudinaryService().uploadMedia(
+            base64Decode(post['fileBytes']),
+            post['fileName'],
+            isVideo: post['isVideo'],
+          );
+          post['mediaUrl'] = mediaUrl;
         }
+
+        // Subir datos a Firebase
+        await FirebaseFirestore.instance.collection('posts').add({
+          ...post,
+          'timestamp': FieldValue.serverTimestamp(), // Usar timestamp de Firebase
+        });
       } catch (e) {
         print("Error al sincronizar publicación: $e");
-        // Mantener la publicación en caché si hay un error
+        // Si hay un error, mantener la publicación en la lista actualizada
         updatedCachedPosts.add(cachedPost);
+        continue;
       }
     }
 
-    // Actualizar las publicaciones locales restantes (solo las que fallaron)
+    // Actualizar la caché local con las publicaciones no subidas
     await prefs.setStringList('cached_posts', updatedCachedPosts);
+
     setState(() {
       localPosts = updatedCachedPosts
           .map((post) => jsonDecode(post) as Map<String, dynamic>)
           .toList();
     });
 
-    print("Sincronización completada.");
+    print("Sincronización completada. Publicaciones restantes en caché: ${updatedCachedPosts.length}");
   }
+
 
 
 
