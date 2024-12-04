@@ -1,8 +1,11 @@
 {
   "name": "JasiTok",
-  "short_name": "JasiTok the best app",
+  "short_name": "JasiTok",
+  "description": "JasiTok: La mejor aplicación para compartir tus momentos favoritos.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#651CE5",
   "icons": [

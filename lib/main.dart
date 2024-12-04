@@ -13,10 +13,11 @@ void main() async {
     // Usa las opciones generadas automáticamente
   );
 
-  // Habilitar persistencia offline para Firestore
+    // Habilitar persistencia offline
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
   );
+  
   runApp(MyApp());
 }
 

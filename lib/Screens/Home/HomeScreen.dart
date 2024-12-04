@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:floein_social_app/cloudinary_service.dart';
 import 'package:flutter/material.dart';
 import 'package:floein_social_app/Screens/Home/home_card.dart';
 import 'package:floein_social_app/components/Custom_NavBar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:floein_social_app/components/enums.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class HomeScreen extends StatefulWidget {
   static String routeName = "/home";
@@ -18,7 +22,8 @@ class _HomeState extends State<HomeScreen> {
   bool isLoading = true;
 
   final ScrollController _scrollController = ScrollController();
-  List<DocumentSnapshot> posts = [];
+  List<Map<String, dynamic>> localPosts = [];
+  List<DocumentSnapshot> firebasePosts = [];
   bool isLoadingMore = false;
   DocumentSnapshot? lastDocument;
   final int postsPerPage = 5;
@@ -28,12 +33,13 @@ class _HomeState extends State<HomeScreen> {
   void initState() {
     super.initState();
     fetchUserData();
-    fetchPosts();
+    fetchLocalPosts();
+    fetchFirebasePosts();
+    monitorConnectivity();
 
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        fetchPosts();
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+        fetchFirebasePosts();
       }
     });
   }
@@ -66,7 +72,15 @@ class _HomeState extends State<HomeScreen> {
     }
   }
 
-  Future<void> fetchPosts() async {
+  Future<void> fetchLocalPosts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedPosts = prefs.getStringList('cached_posts') ?? [];
+    setState(() {
+      localPosts = cachedPosts.map((post) => jsonDecode(post) as Map<String, dynamic>).toList();
+    });
+  }
+
+  Future<void> fetchFirebasePosts() async {
     if (isLoadingMore || !hasMorePosts) return;
 
     setState(() {
@@ -87,7 +101,7 @@ class _HomeState extends State<HomeScreen> {
 
       setState(() {
         if (snapshot.docs.isNotEmpty) {
-          posts.addAll(snapshot.docs);
+          firebasePosts.addAll(snapshot.docs);
           lastDocument = snapshot.docs.last;
         } else {
           hasMorePosts = false;
@@ -102,6 +116,60 @@ class _HomeState extends State<HomeScreen> {
         isLoadingMore = false;
       });
     }
+  }
+
+  Future<void> syncOfflinePosts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedPosts = prefs.getStringList('cached_posts') ?? [];
+
+    for (String cachedPost in cachedPosts) {
+      final post = jsonDecode(cachedPost) as Map<String, dynamic>;
+
+      try {
+        // Subir archivo a Cloudinary si existe
+        String? mediaUrl;
+        if (post.containsKey('fileBytes')) {
+          mediaUrl = await CloudinaryService().uploadMedia(
+            base64Decode(post['fileBytes']),
+            post['fileName'],
+            isVideo: post['isVideo'],
+          );
+        }
+
+        // Subir datos a Firebase
+        await FirebaseFirestore.instance.collection('posts').add({
+          'des': post['description'],
+          'mediaUrl': mediaUrl ?? '',
+          'isVideo': post['isVideo'],
+          'timestamp': FieldValue.serverTimestamp(),
+          'userID': post['userID'],
+          'nickname': post['nickname'],
+          'profileimageURL': post['profileimageURL'],
+          'likes': {},
+          'likesCount': 0,
+          'comments': [],
+        });
+      } catch (e) {
+        print("Error al sincronizar publicación: $e");
+      }
+    }
+
+    // Limpiar publicaciones locales después de sincronizar
+    await prefs.remove('cached_posts');
+    setState(() {
+      localPosts.clear();
+    });
+    print("Sincronización completada.");
+  }
+
+  void monitorConnectivity() {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
+      if (result == ConnectivityResult.mobile || result == ConnectivityResult.wifi) {
+        print("Conexión detectada. Sincronizando publicaciones...");
+        await syncOfflinePosts();
+        await fetchFirebasePosts();
+      }
+    });
   }
 
   @override
@@ -122,8 +190,7 @@ class _HomeState extends State<HomeScreen> {
                           children: [
                             // Header con el nombre y foto de perfil
                             Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 20, right: 20, top: 10),
+                              padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
                               child: Row(
                                 children: [
                                   SvgPicture.network(
@@ -145,16 +212,14 @@ class _HomeState extends State<HomeScreen> {
                                           padding: const EdgeInsets.all(5.0),
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(50),
+                                              borderRadius: BorderRadius.circular(50),
                                               color: Colors.white,
                                             ),
                                             height: 45,
                                             width: 45,
                                             child: CircleAvatar(
                                               backgroundImage: NetworkImage(
-                                                userData['profileimageURL'] ??
-                                                    'https://via.placeholder.com/150',
+                                                userData['profileimageURL'] ?? 'https://via.placeholder.com/150',
                                               ),
                                               radius: 25,
                                             ),
@@ -162,8 +227,7 @@ class _HomeState extends State<HomeScreen> {
                                         ),
                                         Expanded(
                                           child: Text(
-                                            userData['nickname'] ??
-                                                'Usuario desconocido',
+                                            userData['nickname'] ?? 'Usuario desconocido',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: Colors.black,
@@ -179,25 +243,34 @@ class _HomeState extends State<HomeScreen> {
                               ),
                             ),
                             SizedBox(height: 20),
-                            // Lista de publicaciones con paginación
+                            // Lista de publicaciones
                             Column(
-                              children: posts.map((post) {
-                                return HomeCard(
-                                  postId: post.id,
-                                  profileimageURL:
-                                      post['profileimageURL'] ??
-                                          'https://via.placeholder.com/150',
-                                  nickname: post['nickname'] ??
-                                      'Usuario desconocido',
-                                  des: post['des'] ?? '',
-                                  mediaUrl: post['mediaUrl'] ?? '',
-                                  isVideo: post['isVideo'] ?? false,
-                                  likesCount: post['likesCount'] ?? 0,
-                                  isLiked: post['likes']?[
-                                          FirebaseAuth.instance.currentUser!.uid] ??
-                                      false,
-                                );
-                              }).toList(),
+                              children: [
+                                ...localPosts.map((post) {
+                                  return HomeCard(
+                                    postId: '',
+                                    profileimageURL: post['profileimageURL'],
+                                    nickname: post['nickname'],
+                                    des: post['description'],
+                                    mediaUrl: post['mediaUrl'] ?? '',
+                                    isVideo: post['isVideo'],
+                                    likesCount: 0,
+                                    isLiked: false,
+                                  );
+                                }).toList(),
+                                ...firebasePosts.map((post) {
+                                  return HomeCard(
+                                    postId: post.id,
+                                    profileimageURL: post['profileimageURL'] ?? 'https://via.placeholder.com/150',
+                                    nickname: post['nickname'] ?? 'Usuario desconocido',
+                                    des: post['des'] ?? '',
+                                    mediaUrl: post['mediaUrl'] ?? '',
+                                    isVideo: post['isVideo'] ?? false,
+                                    likesCount: post['likesCount'] ?? 0,
+                                    isLiked: post['likes']?[FirebaseAuth.instance.currentUser!.uid] ?? false,
+                                  );
+                                }).toList(),
+                              ],
                             ),
                             if (isLoadingMore)
                               Center(

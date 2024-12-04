@@ -1,5 +1,5 @@
-const CACHE_NAME = 'JasimpTok';
-const FIRESTORE_DYNAMIC_CACHE = 'firestore-dynamic-cache';
+const CACHE_NAME = 'JasimpTok-v1';
+const FIRESTORE_DYNAMIC_CACHE = 'firestore-dynamic-cache-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -43,13 +43,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  if (event.request.method === 'POST') {
+    // No manejar solicitudes POST
+    return;
+  }
+
   if (event.request.url.includes('firestore.googleapis.com')) {
-    // Manejar solicitudes a Firestore
     event.respondWith(
       caches.open(FIRESTORE_DYNAMIC_CACHE).then((cache) => {
         return fetch(event.request)
           .then((response) => {
-            // Solo cachear si la respuesta es válida
             if (response && response.status === 200) {
               cache.put(event.request, response.clone());
             }
@@ -61,7 +64,6 @@ self.addEventListener('fetch', (event) => {
       })
     );
   } else {
-    // Manejar otros recursos estáticos
     event.respondWith(
       caches.match(event.request).then((response) => {
         return (
