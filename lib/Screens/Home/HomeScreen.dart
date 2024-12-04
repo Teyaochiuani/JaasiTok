@@ -121,46 +121,55 @@ class _HomeState extends State<HomeScreen> {
   Future<void> syncOfflinePosts() async {
     final prefs = await SharedPreferences.getInstance();
     final cachedPosts = prefs.getStringList('cached_posts') ?? [];
+    List<String> updatedCachedPosts = [];
 
     for (String cachedPost in cachedPosts) {
       final post = jsonDecode(cachedPost) as Map<String, dynamic>;
 
       try {
-        // Subir archivo a Cloudinary si existe
-        String? mediaUrl;
-        if (post.containsKey('fileBytes')) {
-          mediaUrl = await CloudinaryService().uploadMedia(
-            base64Decode(post['fileBytes']),
-            post['fileName'],
-            isVideo: post['isVideo'],
-          );
-        }
+        // Verificar si la publicación ya existe en Firebase
+        QuerySnapshot existingPosts = await FirebaseFirestore.instance
+            .collection('posts')
+            .where('timestamp', isEqualTo: post['timestamp'])
+            .where('userID', isEqualTo: post['userID'])
+            .get();
 
-        // Subir datos a Firebase
-        await FirebaseFirestore.instance.collection('posts').add({
-          'des': post['description'],
-          'mediaUrl': mediaUrl ?? '',
-          'isVideo': post['isVideo'],
-          'timestamp': FieldValue.serverTimestamp(),
-          'userID': post['userID'],
-          'nickname': post['nickname'],
-          'profileimageURL': post['profileimageURL'],
-          'likes': {},
-          'likesCount': 0,
-          'comments': [],
-        });
+        if (existingPosts.docs.isEmpty) {
+          // Subir archivo a Cloudinary si es necesario
+          if (post.containsKey('fileBytes') && post.containsKey('fileName')) {
+            final mediaUrl = await CloudinaryService().uploadMedia(
+              base64Decode(post['fileBytes']),
+              post['fileName'],
+              isVideo: post['isVideo'],
+            );
+            post['mediaUrl'] = mediaUrl;
+          }
+
+          // Subir datos a Firebase
+          await FirebaseFirestore.instance.collection('posts').add({
+            ...post,
+            'timestamp': FieldValue.serverTimestamp(), // Usar timestamp de Firebase
+          });
+        }
       } catch (e) {
         print("Error al sincronizar publicación: $e");
+        // Mantener la publicación en caché si hay un error
+        updatedCachedPosts.add(cachedPost);
       }
     }
 
-    // Limpiar publicaciones locales después de sincronizar
-    await prefs.remove('cached_posts');
+    // Actualizar las publicaciones locales restantes (solo las que fallaron)
+    await prefs.setStringList('cached_posts', updatedCachedPosts);
     setState(() {
-      localPosts.clear();
+      localPosts = updatedCachedPosts
+          .map((post) => jsonDecode(post) as Map<String, dynamic>)
+          .toList();
     });
+
     print("Sincronización completada.");
   }
+
+
 
   void monitorConnectivity() {
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
@@ -251,7 +260,7 @@ class _HomeState extends State<HomeScreen> {
                                     postId: '',
                                     profileimageURL: post['profileimageURL'],
                                     nickname: post['nickname'],
-                                    des: post['description'],
+                                    des: post['des'],
                                     mediaUrl: post['mediaUrl'] ?? '',
                                     isVideo: post['isVideo'],
                                     likesCount: 0,
